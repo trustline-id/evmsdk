@@ -2,6 +2,7 @@
 pragma solidity ^0.8;
 
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {IValidationEngine} from "./interfaces/IValidationEngine.sol";
 import {IValidationEngineInitializer} from "./interfaces/IValidationEngineInitializer.sol";
 
@@ -43,6 +44,7 @@ abstract contract Trustlined {
         if (proxy != address(0)) {
             // Use the provided Validation Engine proxy
             require(proxy.code.length > 0, "Proxy is not a contract");
+            _assertValidationEngine(proxy);
             validationEngine = IValidationEngine(proxy);
         } else {
             // Deploy a new Validation Engine proxy
@@ -54,6 +56,7 @@ abstract contract Trustlined {
             bytes memory data = abi.encodeCall(IValidationEngineInitializer.initialize, (initialOwner));
             address proxy_ = address(new ERC1967Proxy(logic, data));
 
+            _assertValidationEngine(proxy_);
             validationEngine = IValidationEngine(proxy_);
 
             emit ValidationEngineDeployed(address(this), proxy_, logic, initialOwner);
@@ -80,5 +83,14 @@ abstract contract Trustlined {
     /// @notice Requires a trusted transaction and a non‑sanctioned msg.sender
     function requireTrustline() internal {
         validationEngine.requireTrustline(msg.sender, msg.value, msg.data);
+    }
+
+    /// @dev Runtime conformance check via EIP-165 to ensure the candidate advertises IValidationEngine.
+    /// @dev This does not cryptographically attest Trustline provenance, but prevents accidental misconfiguration.
+    function _assertValidationEngine(address candidate) private view {
+        require(
+            IERC165(candidate).supportsInterface(type(IValidationEngine).interfaceId),
+            "Invalid validation engine"
+        );
     }
 }

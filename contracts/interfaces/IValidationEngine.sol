@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8;
 
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+
 /// @title Trustline's Validation interface
 /// @author Trustline
 /// @notice This interface defines the functions that must be implemented by the validation contract
 /// @dev This interface is used by the Trustlined contract to interact with Trustline's Validation contract
-interface IValidationEngine {
+/// @dev Implementations must override `supportsInterface` to advertise `type(IValidationEngine).interfaceId`
+interface IValidationEngine is IERC165 {
     enum ValidationMode {
         Dapp,
         UniswapV4,
