@@ -3,6 +3,7 @@ pragma solidity ^0.8;
 
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IValidationEngine} from "./interfaces/IValidationEngine.sol";
+import {IValidationEngineInitializer} from "./interfaces/IValidationEngineInitializer.sol";
 
 /// @title Trustline's Base Contract
 /// @author Trustline
@@ -50,7 +51,7 @@ abstract contract Trustlined {
             address initialOwner = msg.sender;
 
             // Deployment of the Validation Engine proxy
-            bytes memory data = abi.encodeWithSignature("initialize(address)", initialOwner);
+            bytes memory data = abi.encodeCall(IValidationEngineInitializer.initialize, (initialOwner));
             address proxy_ = address(new ERC1967Proxy(logic, data));
 
             validationEngine = IValidationEngine(proxy_);
