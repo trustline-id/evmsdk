@@ -1,7 +1,7 @@
 {
   "name": "@trustline.id/evmsdk",
   "description": "Protects EVM-compatible smart contracts from unauthorized access and malicious transactions",
-  "version": "1.0.6",
+  "version": "1.0.6-audited.0",
   "main": "index.js",
   "scripts": {
     "compile": "hardhat compile",
