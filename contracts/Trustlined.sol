@@ -45,6 +45,10 @@ abstract contract Trustlined {
             // Use the provided Validation Engine proxy
             require(proxy.code.length > 0, "Proxy is not a contract");
             _assertValidationEngine(proxy);
+            require(
+                IAccessControlDefaultAdminRules(proxy).defaultAdmin() == msg.sender,
+                "Invalid validation engine admin"
+            );
             validationEngine = IValidationEngine(proxy);
         } else {
             // Deploy a new Validation Engine proxy
