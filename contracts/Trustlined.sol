@@ -71,12 +71,14 @@ abstract contract Trustlined {
     }
 
     /// @notice Checks whether a transaction is trusted and verifies msg.sender + addresses[] against sanctions lists
+    /// @dev Does not enforce compliance. Use `requireTrustline(...)` to enforce.
     /// @param addresses An array of addresses that will be verified by the policy
     function checkTrustlineStatus(address[] memory addresses) internal view returns (bool) {
         return validationEngine.checkTrustlineStatus(msg.sender, msg.value, msg.data, addresses);
     }
 
     /// @notice Checks whether a transaction is trusted and verifies msg.sender against sanctions lists
+    /// @dev Does not enforce compliance. Use `requireTrustline(...)` to enforce.
     function checkTrustlineStatus() internal view returns (bool) {
         return validationEngine.checkTrustlineStatus(msg.sender, msg.value, msg.data);
     }

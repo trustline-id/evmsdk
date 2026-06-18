@@ -23,7 +23,7 @@ npm install @trustline.id/evmsdk
 
 Validation is performed through a small set of on-chain/off-chain components:
 
-- **Your contract** — Inherits from `Trustlined` and calls `requireTrustline()` or `checkTrustlineStatus()` before sensitive operations. It holds the address of a **Validation Engine proxy**.
+- **Your contract** — Inherits from `Trustlined` and calls `requireTrustline()` before sensitive operations (or `checkTrustlineStatus()` when a non-enforcing query is needed). It holds the address of a **Validation Engine proxy**.
 - **Validation Engine proxy** — An ERC1967 proxy that your contract talks to. It delegates all calls to the **Validation Engine logic** contract, so the implementation can be upgraded without changing your contract’s configuration. This proxy is deployed automatically when your contract is deployed or initialized, if you do not provide an existing proxy. **Do not deploy this proxy manually** - manual deployment risks a separate, non-atomic `initialize` step and an uninitialized or misconfigured engine.
 - **Validation Engine logic** — The implementation contract that runs Trustline's transaction validation logic. It verifies certificates issued by **Trustline's Oracle backend** (and optionally consults other oracles) to decide whether a transaction and its addresses are authorized. Trustline deploys it on supported blockchains.
 - **Trustline's Oracle backend** — Trustline’s off-chain service that issues validation certificates to the on-chain Validation Engine.
@@ -120,9 +120,18 @@ constructor(
 
 #### Functions
 
+`requireTrustline` and `checkTrustlineStatus` serve different roles:
+
+| Function | Role | Enforces compliance? |
+|----------|------|----------------------|
+| `requireTrustline(...)` | **Enforcing call** — reverts if the transaction is not compliant | Yes |
+| `checkTrustlineStatus(...)` | **Query** — returns `true` or `false` without reverting | No |
+
+Use `requireTrustline()` to guard state-changing operations. Use `checkTrustlineStatus()` only when you need the result (e.g. a `view` function, or conditional branching). If you call `checkTrustlineStatus()` before a state-changing operation and want to block non-compliant callers, you **must** wrap it: `require(checkTrustlineStatus(), "...")`. Calling `checkTrustlineStatus()` alone does not prevent execution.
+
 ##### `requireTrustline()`
 
-Requires a trusted transaction and a non-sanctioned `msg.sender`. Reverts if the transaction is not compliant.
+**Enforcing call.** Requires a trusted transaction and a non-sanctioned `msg.sender`. Reverts if the transaction is not compliant.
 
 ```solidity
 function requireTrustline() internal
