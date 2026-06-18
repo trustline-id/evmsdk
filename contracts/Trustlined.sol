@@ -2,6 +2,7 @@
 pragma solidity ^0.8;
 
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {IAccessControlDefaultAdminRules} from "@openzeppelin/contracts/access/extensions/IAccessControlDefaultAdminRules.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {IValidationEngine} from "./interfaces/IValidationEngine.sol";
 import {IValidationEngineInitializer} from "./interfaces/IValidationEngineInitializer.sol";
@@ -9,6 +10,8 @@ import {IValidationEngineInitializer} from "./interfaces/IValidationEngineInitia
 /// @title Trustline's Base Contract
 /// @author Trustline
 /// @notice This library provides functions for verifying the trust status of a transaction
+/// @dev Validation Engine proxies must not be deployed manually. Use the auto-deploy path (logic + zero proxy)
+///      so the ERC1967 proxy is created and `initialize` runs atomically, or reuse a proxy previously deployed that way.
 abstract contract Trustlined {
     /// @notice Emitted when a new Validation Engine proxy is deployed for this client contract.
     /// @dev `client` is the address of the integrating contract (i.e., the contract inheriting from Trustlined).
@@ -29,7 +32,7 @@ abstract contract Trustlined {
 
     /// @dev Both a constructor and initializer functions are defined to support both upgradeable and non-upgradeable deployment scenarios
     /// @param trustlineValidationEngineLogic The Validation Engine logic contract address for deploying a proxy (used only if validationEngineAddress is zero)
-    /// @param trustlineValidationEngineProxy Optional Validation Engine proxy address. If provided (non-zero), it will be used directly instead of deploying a new proxy
+    /// @param trustlineValidationEngineProxy Optional Validation Engine proxy address. If provided (non-zero), it must have been deployed atomically by `Trustlined` (not manually). If `address(0)`, a new proxy is deployed and initialized in the same transaction.
     constructor(address trustlineValidationEngineLogic, address trustlineValidationEngineProxy) {
         __Trustlined_init(trustlineValidationEngineLogic, trustlineValidationEngineProxy);
     }
@@ -51,7 +54,7 @@ abstract contract Trustlined {
             );
             validationEngine = IValidationEngine(proxy);
         } else {
-            // Deploy a new Validation Engine proxy
+            // Deploy a new Validation Engine proxy and initialize it atomically (never deploy manually)
             require(logic.code.length > 0, "Logic is not a contract");
 
             address initialOwner = msg.sender;

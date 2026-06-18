@@ -24,7 +24,7 @@ npm install @trustline.id/evmsdk
 Validation is performed through a small set of on-chain/off-chain components:
 
 - **Your contract** — Inherits from `Trustlined` and calls `requireTrustline()` or `checkTrustlineStatus()` before sensitive operations. It holds the address of a **Validation Engine proxy**.
-- **Validation Engine proxy** — An ERC1967 proxy that your contract talks to. It delegates all calls to the **Validation Engine logic** contract, so the implementation can be upgraded without changing your contract’s configuration. This proxy is deployed automatically when your contract is deployed or initialized, if you do not provide an existing proxy.
+- **Validation Engine proxy** — An ERC1967 proxy that your contract talks to. It delegates all calls to the **Validation Engine logic** contract, so the implementation can be upgraded without changing your contract’s configuration. This proxy is deployed automatically when your contract is deployed or initialized, if you do not provide an existing proxy. **Do not deploy this proxy manually** - manual deployment risks a separate, non-atomic `initialize` step and an uninitialized or misconfigured engine.
 - **Validation Engine logic** — The implementation contract that runs Trustline's transaction validation logic. It verifies certificates issued by **Trustline's Oracle backend** (and optionally consults other oracles) to decide whether a transaction and its addresses are authorized. Trustline deploys it on supported blockchains.
 - **Trustline's Oracle backend** — Trustline’s off-chain service that issues validation certificates to the on-chain Validation Engine.
 - **Other oracles** — The Validation Engine can aggregate data from additional on-chain oracles (e.g. sanctions lists) so validation uses multiple data sources.
@@ -69,7 +69,7 @@ contract MyContract is Trustlined {
 
 ### Using Existing Validation Engine Proxy
 
-If you already have a Validation Engine proxy deployed, you can use it directly:
+If you already have a Validation Engine proxy that was **previously deployed atomically** by another `Trustlined` contract (via the auto-deploy path below), you can reuse it:
 
 ```solidity
 contract MyContract is Trustlined {
@@ -80,9 +80,11 @@ contract MyContract is Trustlined {
 }
 ```
 
+> **Important:** Never deploy a Validation Engine proxy manually (e.g. with a standalone `ERC1967Proxy` deployment followed by a separate `initialize` call). Only use proxies created by `Trustlined` during contract deployment, which deploys the proxy and calls `initialize` in a single atomic step. A manually deployed proxy may be left uninitialized or initialized by the wrong account.
+
 ### Deploying New Validation Engine Proxy
 
-If you want to deploy a new Validation Engine proxy for your contract, the deployment will take place automatically during the deployment of your contract:
+To deploy a new Validation Engine proxy, pass the Trustline logic address and `address(0)` for the proxy. Deployment and initialization happen **atomically** during your contract's deployment - do not deploy the proxy yourself:
 
 ```solidity
 contract MyContract is Trustlined {
@@ -113,8 +115,8 @@ constructor(
 - `trustlineValidationEngineProxy`: Optional Validation Engine proxy address. If provided (non-zero), it will be used directly. If `address(0)`, a new proxy will be deployed using the logic contract.
 
 **Behavior:**
-- If `trustlineValidationEngineProxy` is non-zero: Uses the provided proxy directly
-- If `trustlineValidationEngineProxy` is `address(0)`: Deploys a new ERC1967 proxy using `trustlineValidationEngineLogic` during your contract's deployment
+- If `trustlineValidationEngineProxy` is non-zero: Uses the provided proxy directly (must have been deployed atomically by `Trustlined`, with `defaultAdmin` set to the caller)
+- If `trustlineValidationEngineProxy` is `address(0)`: Deploys a new ERC1967 proxy using `trustlineValidationEngineLogic` and calls `initialize` in the same transaction - **never deploy this proxy manually**
 
 #### Functions
 
@@ -286,6 +288,7 @@ npm run compile
 
 ## Security Considerations
 
+- Never deploy a Validation Engine proxy manually - always let `Trustlined` deploy and initialize it atomically, or reuse a proxy previously created that way
 - Always validate addresses that receive funds or tokens
 - Use `requireTrustline(addresses[])` when checking recipients
 - Use `requireTrustline()` for sender-only validation when appropriate
