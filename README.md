@@ -233,6 +233,21 @@ event ValidationEngineDeployed(
 - `logic`: The Validation Engine implementation (logic) contract the proxy points to at deployment time
 - `initialOwner`: The address passed to the engine's `initialize(address)` call (typically the deployer/initializer)
 
+##### `ValidationEngineAdopted`
+
+Emitted when an existing Validation Engine proxy is adopted by this client contract.
+
+```solidity
+event ValidationEngineAdopted(
+    address indexed client,
+    address indexed engineProxy
+);
+```
+
+**Parameters:**
+- `client`: The address of the integrating contract (i.e., the contract inheriting from Trustlined)
+- `engineProxy`: The Validation Engine proxy address being reused
+
 ## Validation Modes
 
 The SDK supports different validation modes for various DeFi protocols. These can be used with the advanced `IValidationEngine` interface methods:

@@ -25,6 +25,14 @@ abstract contract Trustlined {
         address initialOwner
     );
 
+    /// @notice Emitted when an existing Validation Engine proxy is adopted by this client contract.
+    /// @dev `client` is the address of the integrating contract (i.e., the contract inheriting from Trustlined).
+    /// @dev `engineProxy` is the Validation Engine proxy address being reused.
+    event ValidationEngineAdopted(
+        address indexed client,
+        address indexed engineProxy
+    );
+
     /// @notice The Trustline ValidationEngine contract address. It must be set before any of the provided functions can be used
     /// @dev Multiple dapps can share the same ValidationEngine contract
     /// @dev This contract is set by the owner and must implement the IValidationEngine interface
@@ -53,6 +61,8 @@ abstract contract Trustlined {
                 "Invalid validation engine admin"
             );
             validationEngine = IValidationEngine(proxy);
+
+            emit ValidationEngineAdopted(address(this), proxy);
         } else {
             // Deploy a new Validation Engine proxy and initialize it atomically (never deploy manually)
             require(logic.code.length > 0, "Logic is not a contract");
