@@ -95,6 +95,10 @@ contract MyContract is Trustlined {
 }
 ```
 
+### Cross-chain deployment
+
+Validation Engine proxy addresses are **not deterministic across chains**. Track the addresses by reading the deployed proxies from the `ValidationEngineDeployed` event or by calling `validationEngine()` after deployment.
+
 ## API Reference
 
 ### Contract: `Trustlined`
@@ -116,7 +120,7 @@ constructor(
 
 **Behavior:**
 - If `trustlineValidationEngineProxy` is non-zero: Uses the provided proxy directly (must have been deployed atomically by `Trustlined`, with `defaultAdmin` set to the caller)
-- If `trustlineValidationEngineProxy` is `address(0)`: Deploys a new ERC1967 proxy using `trustlineValidationEngineLogic` and calls `initialize` in the same transaction - **never deploy this proxy manually**
+- If `trustlineValidationEngineProxy` is `address(0)`: Deploys a new ERC1967 proxy using `trustlineValidationEngineLogic` and calls `initialize` in the same transaction - **never deploy this proxy manually**. The proxy address is chain-specific and non-deterministic across networks (see [Cross-chain deployment](#cross-chain-deployment)).
 
 #### Functions
 
@@ -313,6 +317,7 @@ npm run compile
 ## Security Considerations
 
 - Never deploy a Validation Engine proxy manually - always let `Trustlined` deploy and initialize it atomically, or reuse a proxy previously created that way
+- Validation Engine proxy addresses are chain-specific; do not assume cross-chain address parity when auto-deploying (see [Cross-chain deployment](#cross-chain-deployment))
 - Validation Engine logic and proxy addresses must be genuine contracts — EIP-7702 delegated EOAs (code prefix `0xef0100`) are rejected
 - Always validate addresses that receive funds or tokens
 - Use `requireTrustline(addresses[])` when checking recipients

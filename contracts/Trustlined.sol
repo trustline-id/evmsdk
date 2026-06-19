@@ -17,6 +17,7 @@ abstract contract Trustlined {
     /// @notice Emitted when a new Validation Engine proxy is deployed for this client contract.
     /// @dev `client` is the address of the integrating contract (i.e., the contract inheriting from Trustlined).
     /// @dev `engineProxy` is the freshly deployed ERC1967 proxy address for the Validation Engine instance.
+    /// @dev Index this event to obtain the per-chain proxy address — it is not deterministic across chains (CREATE, not CREATE2).
     /// @dev `logic` is the Validation Engine implementation (logic) contract the proxy points to at deployment time.
     /// @dev `initialOwner` is the address passed to the engine's `initialize(address)` call (typically the deployer/initializer).
     event ValidationEngineDeployed(
@@ -65,7 +66,8 @@ abstract contract Trustlined {
 
             emit ValidationEngineAdopted(address(this), proxy);
         } else {
-            // Deploy a new Validation Engine proxy and initialize it atomically (never deploy manually)
+            // Deploy a new Validation Engine proxy and initialize it atomically (never deploy manually).
+            // Proxy address uses CREATE and is chain-/nonce-dependent — not reproducible cross-chain.
             _assertContractAccount(logic);
 
             address initialOwner = msg.sender;
