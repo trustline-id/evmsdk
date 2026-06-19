@@ -313,6 +313,7 @@ npm run compile
 ## Security Considerations
 
 - Never deploy a Validation Engine proxy manually - always let `Trustlined` deploy and initialize it atomically, or reuse a proxy previously created that way
+- Validation Engine logic and proxy addresses must be genuine contracts — EIP-7702 delegated EOAs (code prefix `0xef0100`) are rejected
 - Always validate addresses that receive funds or tokens
 - Use `requireTrustline(addresses[])` when checking recipients
 - Use `requireTrustline()` for sender-only validation when appropriate

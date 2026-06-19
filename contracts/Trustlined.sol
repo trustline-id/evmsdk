@@ -2,6 +2,7 @@
 pragma solidity ^0.8;
 
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {EIP7702Utils} from "@openzeppelin/contracts/account/utils/EIP7702Utils.sol";
 import {IAccessControlDefaultAdminRules} from "@openzeppelin/contracts/access/extensions/IAccessControlDefaultAdminRules.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {IValidationEngine} from "./interfaces/IValidationEngine.sol";
@@ -54,7 +55,7 @@ abstract contract Trustlined {
 
         if (proxy != address(0)) {
             // Use the provided Validation Engine proxy
-            require(proxy.code.length > 0, "Proxy is not a contract");
+            _assertContractAccount(proxy);
             _assertValidationEngine(proxy);
             require(
                 IAccessControlDefaultAdminRules(proxy).defaultAdmin() == msg.sender,
@@ -65,7 +66,7 @@ abstract contract Trustlined {
             emit ValidationEngineAdopted(address(this), proxy);
         } else {
             // Deploy a new Validation Engine proxy and initialize it atomically (never deploy manually)
-            require(logic.code.length > 0, "Logic is not a contract");
+            _assertContractAccount(logic);
 
             address initialOwner = msg.sender;
 
@@ -102,6 +103,13 @@ abstract contract Trustlined {
     /// @notice Requires a trusted transaction and a non‑sanctioned msg.sender
     function requireTrustline() internal {
         validationEngine.requireTrustline(msg.sender, msg.value, msg.data);
+    }
+
+    /// @dev Ensures `target` is a genuine contract account, not an empty EOA or an EIP-7702 delegated EOA.
+    /// @dev EIP-7702 accounts expose a 23-byte designator (`0xef0100 || delegate`) in `extcode`; reject those.
+    function _assertContractAccount(address target) private view {
+        require(target.code.length > 0, "Not a contract");
+        require(EIP7702Utils.fetchDelegate(target) == address(0), "Delegated EOA not allowed");
     }
 
     /// @dev Runtime conformance check via EIP-165 to ensure the candidate advertises IValidationEngine.
