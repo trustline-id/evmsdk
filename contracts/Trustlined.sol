@@ -13,6 +13,9 @@ import {IValidationEngineInitializer} from "./interfaces/IValidationEngineInitia
 /// @notice This library provides functions for verifying the trust status of a transaction
 /// @dev Validation Engine proxies must not be deployed manually. Use the auto-deploy path (logic + zero proxy)
 ///      so the ERC1967 proxy is created and `initialize` runs atomically, or reuse a proxy previously deployed that way.
+/// @dev Integration requires direct inheritance into a contract that owns its storage layout. Not supported
+///      in Diamond facets, delegatecall routers, or other hosts with foreign storage. When combining with
+///      other bases (e.g. ERC20), keep inheritance order stable across upgrades.
 abstract contract Trustlined {
     /// @notice Emitted when a new Validation Engine proxy is deployed for this client contract.
     /// @dev `client` is the address of the integrating contract (i.e., the contract inheriting from Trustlined).
@@ -38,6 +41,7 @@ abstract contract Trustlined {
     /// @notice The Trustline ValidationEngine contract address. It must be set before any of the provided functions can be used
     /// @dev Multiple dapps can share the same ValidationEngine contract
     /// @dev This contract is set by the owner and must implement the IValidationEngine interface
+    /// @dev Slot is assigned by Solidity inheritance layout; see contract-level integration constraints.
     IValidationEngine public validationEngine;
 
     /// @dev Both a constructor and initializer functions are defined to support both upgradeable and non-upgradeable deployment scenarios

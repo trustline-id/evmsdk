@@ -8,7 +8,7 @@ A Solidity SDK for protecting EVM-compatible smart contracts from unauthorized a
 - ✅ **Sanctions Checking** - Verify addresses against sanctions lists
 - ✅ **Multiple Validation Modes** - Support for Dapp, Uniswap V4, Morpho V2, and ERC-3643 modes
 - ✅ **Address Verification** - Check sender and recipient addresses for compliance
-- ✅ **Upgradeable Support** - Fully compatible with upgradeable smart contracts
+- ✅ **Upgradeable Support** - Compatible with OpenZeppelin-style upgradeable contracts when integrated with direct inheritance (see [Integration constraints](#integration-constraints))
 - ✅ **ERC20 & ERC3643 Support** - Secure operations on standard token contracts
 - ✅ **Proxy Deployment** - Automatic Validation Engine proxy deployment
 - ✅ **Flexible Integration** - Use existing Validation Engine or deploy new instance
@@ -98,6 +98,55 @@ contract MyContract is Trustlined {
 ### Cross-chain deployment
 
 Validation Engine proxy addresses are **not deterministic across chains**. Track the addresses by reading the deployed proxies from the `ValidationEngineDeployed` event or by calling `validationEngine()` after deployment.
+
+### Integration constraints
+
+#### Required
+
+- **Direct inheritance** into your own contract (or upgradeable implementation). Each base gets its own slots in a single, shared layout — this works with tokens, vaults, and other standards.
+- On upgradeable contracts, call **`__Trustlined_init`** from your `initializer` (the `Trustlined` constructor does not run on the proxy).
+
+#### Not supported
+
+- **Diamond (EIP-2535) facets**, **delegatecall routers**, or any module whose code runs against **foreign storage**. There, facet layout slot 0 maps to the host's slot 0 and `validationEngine` can read or write the wrong value — validation may be bypassed or broken.
+- **Changing inheritance order** across upgrades (inserting or reordering bases shifts where `validationEngine` lives and corrupts storage).
+
+#### Recommended
+
+- Keep inheritance order **stable** across upgrades.
+- When combining with other bases that use unstructured storage (e.g. `ERC20`), list them in a fixed order and treat the full layout as part of your upgrade checklist. Listing `Trustlined` leftmost places `validationEngine` at slot 0; listing it after `ERC20` places it at the next free slot — **both are valid** in direct inheritance.
+
+```solidity
+// Supported — standalone dapp
+contract MyDapp is Trustlined {
+    constructor(address logic, address proxy) Trustlined(logic, proxy) {}
+}
+
+// Supported — token; ERC20 and Trustlined each own distinct slots
+contract MyToken is ERC20, Trustlined {
+    constructor(address logic, address proxy)
+        ERC20("My Token", "MYT")
+        Trustlined(logic, proxy)
+    {}
+
+    function transfer(address to, uint256 amount) public override returns (bool) {
+        address[] memory addresses = new address[](1);
+        addresses[0] = to;
+        requireTrustline(addresses);
+        return super.transfer(to, amount);
+    }
+}
+
+// Supported — upgradeable; Initializable uses ERC-7201 namespaced storage in OpenZeppelin v5+
+contract MyDapp is Initializable, Trustlined {
+    function initialize(address logic, address proxy) public initializer {
+        __Trustlined_init(logic, proxy);
+    }
+}
+
+// Not supported — facet code runs in the Diamond's storage, not the facet's layout
+contract MyFacet is Trustlined { ... }  // when used as an EIP-2535 delegatecall facet
+```
 
 ## API Reference
 
@@ -270,7 +319,7 @@ A complete example that ensures all payments are compliant. See the [PaymentFire
 
 ## Upgradeable Contracts
 
-The `Trustlined` contract is fully compatible with upgradeable contracts using OpenZeppelin's upgradeable pattern:
+Upgradeable integrations are supported with OpenZeppelin's `Initializable` pattern when `Trustlined` is composed via **direct inheritance** (see [Integration constraints](#integration-constraints)):
 
 ```solidity
 // SPDX-License-Identifier: MIT
@@ -317,6 +366,7 @@ npm run compile
 ## Security Considerations
 
 - Never deploy a Validation Engine proxy manually - always let `Trustlined` deploy and initialize it atomically, or reuse a proxy previously created that way
+- Integrate via **direct inheritance** only — not as a Diamond facet or delegatecall module (see [Integration constraints](#integration-constraints))
 - Validation Engine proxy addresses are chain-specific; do not assume cross-chain address parity when auto-deploying (see [Cross-chain deployment](#cross-chain-deployment))
 - Validation Engine logic and proxy addresses must be genuine contracts — EIP-7702 delegated EOAs (code prefix `0xef0100`) are rejected
 - Always validate addresses that receive funds or tokens
